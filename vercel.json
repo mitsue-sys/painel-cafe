@@ -1,11 +1,4 @@
 {
   "buildCommand": "echo 'Build complete'",
-  "outputDirectory": ".",
-  "publicSource": "./public",
-  "functions": {
-    "api/**/*.js": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
-  }
+  "outputDirectory": "."
 }
