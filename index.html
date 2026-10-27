@@ -2,11 +2,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root {
-    --bg: #f5e6d3;
-    --fg: #1f2937;
-    --border: #e5d4c1;
-    --card-bg: #ffffff;
-    --accent: #1a5e3f;
+    --bg: #FFFFF3;
+    --card-bg: #FFFFF3;
+    --border: #000;
+    --accent: #1A2B21;
+    --accent-text: #C7FF92;
+    --text: #1f2937;
     --text-light: #666;
   }
   
@@ -14,12 +15,12 @@
   
   body {
     background: var(--bg);
-    color: var(--fg);
+    color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     padding: 40px 20px;
   }
   
-  .container { max-width: 900px; margin: 0 auto; }
+  .container { max-width: 1200px; margin: 0 auto; }
   
   header { margin-bottom: 40px; }
   h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
@@ -27,19 +28,17 @@
   
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 20px;
   }
   
   .card {
     background: var(--card-bg);
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     padding: 20px;
   }
   
-  .card.featured {
-    border: 2px solid var(--accent);
-  }
+  .card.featured { border: 3px solid var(--accent); }
   
   .card h2 {
     font-size: 10px;
@@ -57,7 +56,7 @@
   }
   
   .big-number {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--accent);
     margin: 12px 0 8px 0;
@@ -97,7 +96,7 @@
   .icon {
     width: 36px;
     height: 36px;
-    background: var(--bg);
+    background: #f5e6d3;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -118,9 +117,9 @@
   button {
     width: 100%;
     padding: 10px 16px;
-    border: 1px solid var(--border);
-    background: var(--card-bg);
-    color: var(--fg);
+    border: 2px solid var(--accent);
+    background: var(--accent);
+    color: var(--accent-text);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -129,9 +128,8 @@
   }
   
   button:hover {
-    background: var(--accent);
-    color: white;
-    border-color: var(--accent);
+    background: #0d1810;
+    border-color: #0d1810;
   }
   
   .freq-group {
@@ -143,9 +141,9 @@
   .freq-btn {
     flex: 1;
     padding: 6px;
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     background: var(--card-bg);
-    color: var(--fg);
+    color: var(--text);
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
@@ -153,14 +151,22 @@
   
   .freq-btn.active {
     background: var(--accent);
-    color: white;
+    color: var(--accent-text);
     border-color: var(--accent);
   }
   
   .full-width { grid-column: 1 / -1; }
   
-  .cancel-btn { color: #dc2626; border-color: #dc2626; }
-  .cancel-btn:hover { background: #dc2626; }
+  .cancel-btn { 
+    border-color: #dc2626;
+    background: transparent;
+    color: #dc2626;
+  }
+  
+  .cancel-btn:hover { 
+    background: #dc2626;
+    color: white;
+  }
 </style>
 
 <div class="container">
@@ -196,25 +202,6 @@
       </div>
     </div>
     
-    <!-- Último Pedido -->
-    <div class="card">
-      <h2>Último pedido</h2>
-      <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);">
-        <div>
-          <strong style="font-size: 13px;">Entregue</strong>
-          <div style="font-size: 11px; color: var(--text-light);">28 de outubro</div>
-        </div>
-        <span class="badge">Completo</span>
-      </div>
-      <div class="item">
-        <div class="icon">☕</div>
-        <div>
-          <div class="item-name">Espresso Premium - Etiópia</div>
-          <div class="item-detail">500g | Grão inteiro</div>
-        </div>
-      </div>
-    </div>
-    
     <!-- Café Atual -->
     <div class="card">
       <h2>Café da sua assinatura</h2>
@@ -235,9 +222,11 @@
       <button onclick="alert('Próximo pedido adiado')">Pular Pedido</button>
     </div>
     
-    <!-- Histórico -->
+    <!-- Histórico com Último Pedido -->
     <div class="card full-width">
       <h2>Histórico recente</h2>
+      
+      <h3 style="font-size: 14px; margin: 16px 0 12px 0;">Último pedido</h3>
       <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);">
         <div>
           <strong style="font-size: 13px;">Entregue</strong>
@@ -245,6 +234,15 @@
         </div>
         <span class="badge">Completo</span>
       </div>
+      <div class="item">
+        <div class="icon">☕</div>
+        <div>
+          <div class="item-name">Espresso Premium - Etiópia</div>
+          <div class="item-detail">500g | Grão inteiro</div>
+        </div>
+      </div>
+      
+      <h3 style="font-size: 14px; margin: 16px 0 12px 0;">Anteriores</h3>
       <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);">
         <div>
           <strong style="font-size: 13px;">Entregue</strong>
@@ -252,6 +250,14 @@
         </div>
         <span class="badge">Completo</span>
       </div>
+      <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+        <div>
+          <strong style="font-size: 13px;">Entregue</strong>
+          <div style="font-size: 11px; color: var(--text-light);">30 de setembro</div>
+        </div>
+        <span class="badge">Completo</span>
+      </div>
+      
       <button onclick="alert('Ver histórico completo')">Ver Todos os Pedidos</button>
     </div>
     
