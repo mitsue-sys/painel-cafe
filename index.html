@@ -26,6 +26,9 @@
   h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
   .subtitle { font-size: 14px; color: var(--text-light); }
   
+  .loading { text-align: center; padding: 40px; color: var(--text-light); }
+  .error { background: #fee2e2; padding: 16px; border: 2px solid #000; margin-bottom: 20px; color: #991b1b; }
+  
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -175,102 +178,155 @@
     <p class="subtitle">Gerencie sua assinatura de café</p>
   </header>
   
-  <div class="grid">
-    <!-- Próximo Pedido -->
-    <div class="card featured">
-      <h3>Próximo pedido</h3>
-      <div class="big-number">04/06/2026</div>
-      <p style="font-size: 12px; color: var(--text-light); margin: 0;">Seu pedido de café será gerado automaticamente.</p>
-    </div>
-    
-    <!-- Status Pagamento -->
-    <div class="card">
-      <h2>Status do pagamento</h2>
-      <h3>Pago</h3>
-      <span class="badge">Pagamento em dia</span>
-      <div class="info-row">
-        <span>Próximo pagamento:</span>
-        <span class="value">04 Nov</span>
-      </div>
-      <div class="info-row">
-        <span>Valor:</span>
-        <span class="value">R$ 89,90</span>
-      </div>
-      <div class="info-row">
-        <span>Método:</span>
-        <span class="value">Cartão •• 4242</span>
-      </div>
-    </div>
-    
-    <!-- Café Atual -->
-    <div class="card">
-      <h2>Café da sua assinatura</h2>
-      <div class="item">
-        <div class="icon">☕</div>
-        <div>
-          <div class="item-name">Espresso Premium</div>
-          <div class="item-detail">Etiópia • Grão inteiro</div>
-        </div>
-      </div>
-      <p style="font-size: 11px; color: var(--text-light); margin: 12px 0 6px 0;">Frequência:</p>
-      <div class="freq-group">
-        <button class="freq-btn" onclick="setFreq(15, this)">15d</button>
-        <button class="freq-btn active" onclick="setFreq(20, this)">20d</button>
-        <button class="freq-btn" onclick="setFreq(30, this)">30d</button>
-      </div>
-      <button onclick="alert('Abrir seletor de cafés')">Mudar Café</button>
-      <button onclick="alert('Próximo pedido adiado')">Pular Pedido</button>
-    </div>
-    
-    <!-- Histórico com Último Pedido -->
-    <div class="card full-width">
-      <h2>Histórico recente</h2>
-      
-      <h3 style="font-size: 14px; margin: 16px 0 12px 0;">Último pedido</h3>
-      <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);">
-        <div>
-          <strong style="font-size: 13px;">Entregue</strong>
-          <div style="font-size: 11px; color: var(--text-light);">28 de outubro</div>
-        </div>
-        <span class="badge">Completo</span>
-      </div>
-      <div class="item">
-        <div class="icon">☕</div>
-        <div>
-          <div class="item-name">Espresso Premium - Etiópia</div>
-          <div class="item-detail">500g | Grão inteiro</div>
-        </div>
-      </div>
-      
-      <h3 style="font-size: 14px; margin: 16px 0 12px 0;">Anteriores</h3>
-      <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);">
-        <div>
-          <strong style="font-size: 13px;">Entregue</strong>
-          <div style="font-size: 11px; color: var(--text-light);">14 de outubro</div>
-        </div>
-        <span class="badge">Completo</span>
-      </div>
-      <div style="display: flex; justify-content: space-between; padding: 8px 0;">
-        <div>
-          <strong style="font-size: 13px;">Entregue</strong>
-          <div style="font-size: 11px; color: var(--text-light);">30 de setembro</div>
-        </div>
-        <span class="badge">Completo</span>
-      </div>
-      
-      <button onclick="alert('Ver histórico completo')">Ver Todos os Pedidos</button>
-    </div>
-    
-    <!-- Cancelar -->
-    <div class="card full-width">
-      <button class="cancel-btn" onclick="alert('Abrir cancelamento')">Cancelar Minha Assinatura</button>
-    </div>
-  </div>
+  <div id="error-container"></div>
+  <div id="loading" class="loading">Carregando suas informações...</div>
+  <div id="content" style="display: none;"></div>
 </div>
 
 <script>
+  function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR');
+  }
+
+  function renderPanel(data) {
+    if (!data) {
+      return `<div class="error">Erro ao carregar dados. Por favor, verifique se está logado.</div>`;
+    }
+
+    const lastOrder = data.lastOrder || {};
+    const nextOrder = data.nextOrder || {};
+    const paymentStatus = data.paymentStatus || {};
+    const currentCoffee = data.currentCoffee || {};
+    const orderHistory = data.orderHistory || [];
+    
+    return `
+      <div class="grid">
+        <!-- Próximo Pedido -->
+        <div class="card featured">
+          <h3>Próximo pedido</h3>
+          <div class="big-number">${nextOrder.date || '—'}</div>
+          <p style="font-size: 12px; color: var(--text-light); margin: 0;">Seu pedido de café será gerado automaticamente.</p>
+        </div>
+        
+        <!-- Status Pagamento -->
+        <div class="card">
+          <h2>Status do pagamento</h2>
+          <h3>${paymentStatus.status || 'Pago'}</h3>
+          <span class="badge">${paymentStatus.message || 'Pagamento em dia'}</span>
+          <div class="info-row">
+            <span>Próximo pagamento:</span>
+            <span class="value">${paymentStatus.nextDate || '—'}</span>
+          </div>
+          <div class="info-row">
+            <span>Valor:</span>
+            <span class="value">R$ ${paymentStatus.amount || '89,90'}</span>
+          </div>
+          <div class="info-row">
+            <span>Método:</span>
+            <span class="value">${paymentStatus.method || 'Cartão •• 4242'}</span>
+          </div>
+        </div>
+        
+        <!-- Café Atual -->
+        <div class="card">
+          <h2>Café da sua assinatura</h2>
+          <div class="item">
+            <div class="icon">☕</div>
+            <div>
+              <div class="item-name">${currentCoffee.name || 'Espresso Premium'}</div>
+              <div class="item-detail">${currentCoffee.details || 'Etiópia • Grão inteiro'}</div>
+            </div>
+          </div>
+          <p style="font-size: 11px; color: var(--text-light); margin: 12px 0 6px 0;">Frequência:</p>
+          <div class="freq-group">
+            <button class="freq-btn" onclick="setFreq(15, this)">15d</button>
+            <button class="freq-btn active" onclick="setFreq(20, this)">20d</button>
+            <button class="freq-btn" onclick="setFreq(30, this)">30d</button>
+          </div>
+          <button onclick="alert('Abrir seletor de cafés')">Mudar Café</button>
+          <button onclick="alert('Próximo pedido adiado')">Pular Pedido</button>
+        </div>
+        
+        <!-- Histórico com Último Pedido -->
+        <div class="card full-width">
+          <h2>Histórico recente</h2>
+          
+          <h3 style="font-size: 14px; margin: 16px 0 12px 0;">Último pedido</h3>
+          <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);">
+            <div>
+              <strong style="font-size: 13px;">${lastOrder.status || 'Entregue'}</strong>
+              <div style="font-size: 11px; color: var(--text-light);">${formatDate(lastOrder.date)}</div>
+            </div>
+            <span class="badge">Completo</span>
+          </div>
+          <div class="item">
+            <div class="icon">☕</div>
+            <div>
+              <div class="item-name">${lastOrder.name || 'Café Premium'}</div>
+              <div class="item-detail">${lastOrder.details || '500g | Grão inteiro'}</div>
+            </div>
+          </div>
+          
+          <h3 style="font-size: 14px; margin: 16px 0 12px 0;">Anteriores</h3>
+          ${orderHistory.map(order => `
+            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);">
+              <div>
+                <strong style="font-size: 13px;">${order.status || 'Entregue'}</strong>
+                <div style="font-size: 11px; color: var(--text-light);">${formatDate(order.date)}</div>
+              </div>
+              <span class="badge">Completo</span>
+            </div>
+          `).join('')}
+          
+          <button onclick="alert('Ver histórico completo')">Ver Todos os Pedidos</button>
+        </div>
+        
+        <!-- Cancelar -->
+        <div class="card full-width">
+          <button class="cancel-btn" onclick="alert('Abrir cancelamento')">Cancelar Minha Assinatura</button>
+        </div>
+      </div>
+    `;
+  }
+
+  async function loadData() {
+    const loading = document.getElementById('loading');
+    const errorContainer = document.getElementById('error-container');
+    const content = document.getElementById('content');
+    
+    try {
+      // Pega customerId do URL ou tenta obter do Nuvemshop
+      const params = new URLSearchParams(window.location.search);
+      let customerId = params.get('customerId') || localStorage.getItem('customerId') || '1';
+      
+      // Tenta chamar a API backend
+      const response = await fetch(`/api/orders?customerId=${customerId}`);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao carregar dados');
+      }
+
+      loading.style.display = 'none';
+      content.innerHTML = renderPanel(data);
+      content.style.display = 'block';
+      
+    } catch (error) {
+      console.error('Erro:', error);
+      loading.style.display = 'none';
+      errorContainer.innerHTML = `<div class="error"><strong>Erro:</strong> ${error.message}</div>`;
+      content.innerHTML = renderPanel(null);
+      content.style.display = 'block';
+    }
+  }
+
   function setFreq(days, btn) {
     document.querySelectorAll('.freq-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   }
+
+  // Carregar dados quando a página carrega
+  loadData();
 </script>
