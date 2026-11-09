@@ -101,13 +101,14 @@ export default async function handler(req, res) {
     // Formatar resposta
     const data = {
       lastOrder: {
-        status: lastOrder.fulfillment_status === 'fulfilled' ? 'Entregue' : 'Pendente',
-        date: lastOrder.created_at?.split('T')[0] || '—',
-        name: subscriptionProduct?.name || 'Café Premium',
-        details: `${subscriptionProduct?.quantity || 1}x | ${subscriptionProduct?.variant_values?.[0] || 'Grão inteiro'}`,
-        id: lastOrder.id,
-        total: String(lastOrder.total || '80.00')
-      },
+  status: lastOrder.fulfillment_status && lastOrder.fulfillment_status !== '' ? 'Entregue' : 'Processando',
+  date: lastOrder.created_at?.split('T')[0] || '—',
+  name: subscriptionProduct?.name || 'Café Premium',
+  details: `${subscriptionProduct?.quantity || 1}x | ${subscriptionProduct?.variant_values?.[0] || 'Grão inteiro'}`,
+  id: lastOrder.id,
+  total: String(lastOrder.total || '80.00'),
+  image: subscriptionProduct?.image?.src || null
+},
       
       nextOrder: {
         date: nextOrderDate
@@ -127,17 +128,17 @@ export default async function handler(req, res) {
         frequency: 20
       },
       
-      orderHistory: sortedOrders.slice(0, 5).map(order => {
-        const product = order.products.find(p => 
-          p.name && !p.name.toLowerCase().includes('kit degustação')
-        ) || order.products[0];
-        return {
-          status: order.fulfillment_status === 'fulfilled' ? 'Entregue' : 'Pendente',
-          date: order.created_at?.split('T')[0],
-          name: product?.name
-        };
-      })
-    };
+      orderHistory: sortedOrders.slice(0, 3).map((order, idx) => {
+  const product = order.products.find(p => 
+    p.name && !p.name.toLowerCase().includes('kit degustação')
+  ) || order.products[0];
+  return {
+    status: order.fulfillment_status && order.fulfillment_status !== '' ? 'Entregue' : 'Processando',
+    date: order.created_at?.split('T')[0],
+    name: product?.name,
+    image: product?.image?.src || null
+  };
+})
 
     return res.status(200).json(data);
 
