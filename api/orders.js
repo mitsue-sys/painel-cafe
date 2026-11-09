@@ -34,10 +34,10 @@ export default async function handler(req, res) {
       throw new Error(`API Error: ${ordersResponse.statusText}`);
     }
 
-    const ordersData = await ordersResponse.json();
-    const orders = ordersData.orders || [];
+    // A API retorna um array diretamente
+    const orders = await ordersResponse.json();
 
-    if (orders.length === 0) {
+    if (!Array.isArray(orders) || orders.length === 0) {
       return res.status(200).json({
         error: 'Nenhum pedido encontrado',
         lastOrder: null,
@@ -49,13 +49,12 @@ export default async function handler(req, res) {
     }
 
     // Ordenar por data (mais recente primeiro)
-    orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-    const lastOrder = orders[0];
+    const sortedOrders = [...orders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const lastOrder = sortedOrders[0];
+    let nextOrderDate = calculateNextOrderDate(lastOrder);
 
     // Buscar informações de assinatura se disponível
-    let nextOrderDate = calculateNextOrderDate(lastOrder);
-    if (lastOrder.id) {
+    if (lastOrder?.id) {
       try {
         const subscResponse = await fetch(
           `${NUVEMSHOP_API}/orders/${lastOrder.id}/subscriptions`,
@@ -70,9 +69,8 @@ export default async function handler(req, res) {
         
         if (subscResponse.ok) {
           const subscData = await subscResponse.json();
-          const subscription = subscData.subscriptions?.[0];
-          if (subscription && subscription.next_execution) {
-            nextOrderDate = formatDate(subscription.next_execution);
+          if (Array.isArray(subscData) && subscData.length > 0 && subscData[0].next_execution) {
+            nextOrderDate = formatDate(subscData[0].next_execution);
           }
         }
       } catch (e) {
@@ -109,7 +107,7 @@ export default async function handler(req, res) {
         frequency: 20
       },
       
-      orderHistory: orders.slice(0, 3).map(order => ({
+      orderHistory: sortedOrders.slice(0, 3).map(order => ({
         status: order.fulfillment_status === 'fulfilled' ? 'Entregue' : 'Pendente',
         date: order.created_at?.split('T')[0]
       }))
