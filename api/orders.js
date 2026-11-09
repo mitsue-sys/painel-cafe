@@ -50,7 +50,6 @@ export default async function handler(req, res) {
       if (order.is_subscription !== true || order.payment_status !== 'paid') {
         return false;
       }
-      // Ignora pedidos que são APENAS Kit Degustação
       const hasRealProduct = order.products && order.products.some(p => 
         p.name && !p.name.toLowerCase().includes('kit degustação')
       );
@@ -68,18 +67,37 @@ export default async function handler(req, res) {
       });
     }
 
-    // Ordenar por data DESC (mais recente primeiro)
-    const sortedOrders = subscriptionOrders.sort((a, b) => 
+    // Contar qual café aparece mais (assinatura real/principal)
+    const cafeCounts = {};
+    subscriptionOrders.slice(0, 20).forEach(order => {
+      order.products.forEach(p => {
+        if (p.name && !p.name.toLowerCase().includes('kit degustação')) {
+          cafeCounts[p.name] = (cafeCounts[p.name] || 0) + 1;
+        }
+      });
+    });
+
+    // Pegar o café mais frequente
+    const mainCafeName = Object.keys(cafeCounts).reduce((a, b) => 
+      cafeCounts[a] > cafeCounts[b] ? a : b
+    );
+
+    // Filtrar apenas pedidos com o café principal
+    const mainSubscriptionOrders = subscriptionOrders.filter(order =>
+      order.products.some(p => p.name === mainCafeName)
+    );
+
+    const sortedOrders = mainSubscriptionOrders.sort((a, b) => 
       new Date(b.created_at) - new Date(a.created_at)
     );
 
     const lastOrder = sortedOrders[0];
 
-    // Pegar o produto principal (ignora Kit Degustação)
+    // Pegar o produto principal
     let subscriptionProduct = null;
     for (let i = 0; i < lastOrder.products.length; i++) {
       const p = lastOrder.products[i];
-      if (p.name && !p.name.toLowerCase().includes('kit degustação')) {
+      if (p.name === mainCafeName) {
         subscriptionProduct = p;
         break;
       }
@@ -120,7 +138,7 @@ export default async function handler(req, res) {
         let product = null;
         for (let i = 0; i < order.products.length; i++) {
           const p = order.products[i];
-          if (p.name && !p.name.toLowerCase().includes('kit degustação')) {
+          if (p.name === mainCafeName) {
             product = p;
             break;
           }
