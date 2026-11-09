@@ -45,7 +45,17 @@ export default async function handler(req, res) {
       });
     }
 
-    const subscriptionOrders = allOrders.filter(order => order.is_subscription === true);
+    // Filtrar: assinatura + pagamento pago + ignora Kit Degustação
+    const subscriptionOrders = allOrders.filter(order => {
+      if (order.is_subscription !== true || order.payment_status !== 'paid') {
+        return false;
+      }
+      // Ignora pedidos que são APENAS Kit Degustação
+      const hasRealProduct = order.products && order.products.some(p => 
+        p.name && !p.name.toLowerCase().includes('kit degustação')
+      );
+      return hasRealProduct;
+    });
 
     if (subscriptionOrders.length === 0) {
       return res.status(200).json({
@@ -58,23 +68,21 @@ export default async function handler(req, res) {
       });
     }
 
+    // Ordenar por data DESC (mais recente primeiro)
     const sortedOrders = subscriptionOrders.sort((a, b) => 
       new Date(b.created_at) - new Date(a.created_at)
     );
 
     const lastOrder = sortedOrders[0];
 
+    // Pegar o produto principal (ignora Kit Degustação)
     let subscriptionProduct = null;
     for (let i = 0; i < lastOrder.products.length; i++) {
-      const product = lastOrder.products[i];
-      if (product.name && !product.name.toLowerCase().includes('kit degustação')) {
-        subscriptionProduct = product;
+      const p = lastOrder.products[i];
+      if (p.name && !p.name.toLowerCase().includes('kit degustação')) {
+        subscriptionProduct = p;
         break;
       }
-    }
-    
-    if (!subscriptionProduct && lastOrder.products.length > 0) {
-      subscriptionProduct = lastOrder.products[0];
     }
 
     let nextOrderDate = calculateNextOrderDate(lastOrder);
@@ -116,9 +124,6 @@ export default async function handler(req, res) {
             product = p;
             break;
           }
-        }
-        if (!product && order.products.length > 0) {
-          product = order.products[0];
         }
         
         return {
