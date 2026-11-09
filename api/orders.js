@@ -45,9 +45,9 @@ export default async function handler(req, res) {
       });
     }
 
-    // Filtrar: assinatura + pagamento pago + ignora Kit Degustação
+    // Filtrar: assinatura + ignora Kit Degustação
     const subscriptionOrders = allOrders.filter(order => {
-      if (order.is_subscription !== true || order.payment_status !== 'paid') {
+      if (order.is_subscription !== true) {
         return false;
       }
       const hasRealProduct = order.products && order.products.some(p => 
@@ -67,9 +67,9 @@ export default async function handler(req, res) {
       });
     }
 
-    // Contar qual café aparece mais (assinatura real/principal)
+    // Contar qual café aparece mais (assinatura real)
     const cafeCounts = {};
-    subscriptionOrders.slice(0, 20).forEach(order => {
+    subscriptionOrders.slice(0, 30).forEach(order => {
       order.products.forEach(p => {
         if (p.name && !p.name.toLowerCase().includes('kit degustação')) {
           cafeCounts[p.name] = (cafeCounts[p.name] || 0) + 1;
@@ -77,23 +77,31 @@ export default async function handler(req, res) {
       });
     });
 
-    // Pegar o café mais frequente
     const mainCafeName = Object.keys(cafeCounts).reduce((a, b) => 
       cafeCounts[a] > cafeCounts[b] ? a : b
     );
 
-    // Filtrar apenas pedidos com o café principal
-    const mainSubscriptionOrders = subscriptionOrders.filter(order =>
+    // Filtrar apenas café principal
+    const mainOrders = subscriptionOrders.filter(order =>
       order.products.some(p => p.name === mainCafeName)
     );
 
-    const sortedOrders = mainSubscriptionOrders.sort((a, b) => 
+    // REMOVER DUPLICATAS: Um pedido por dia
+    const uniqueByDay = {};
+    mainOrders.forEach(order => {
+      const date = order.created_at.split('T')[0];
+      if (!uniqueByDay[date] || new Date(order.created_at) > new Date(uniqueByDay[date].created_at)) {
+        uniqueByDay[date] = order;
+      }
+    });
+
+    const sortedOrders = Object.values(uniqueByDay).sort((a, b) => 
       new Date(b.created_at) - new Date(a.created_at)
     );
 
     const lastOrder = sortedOrders[0];
 
-    // Pegar o produto principal
+    // Pegar produto
     let subscriptionProduct = null;
     for (let i = 0; i < lastOrder.products.length; i++) {
       const p = lastOrder.products[i];
@@ -104,6 +112,18 @@ export default async function handler(req, res) {
     }
 
     let nextOrderDate = calculateNextOrderDate(lastOrder);
+
+    // Determinar status de pagamento correto
+    let paymentStatus = 'Pago';
+    let paymentMessage = 'Pagamento em dia';
+    
+    if (lastOrder.payment_status === 'voided' || lastOrder.payment_status === 'cancelled' || lastOrder.payment_status === 'refunded') {
+      paymentStatus = 'Recusado';
+      paymentMessage = 'Pagamento recusado';
+    } else if (lastOrder.payment_status !== 'paid') {
+      paymentStatus = 'Pendente';
+      paymentMessage = 'Aguardando confirmação';
+    }
 
     const data = {
       lastOrder: {
@@ -121,8 +141,8 @@ export default async function handler(req, res) {
       },
       
       paymentStatus: {
-        status: lastOrder.payment_status === 'paid' ? 'Pago' : 'Recusado',
-        message: lastOrder.payment_status === 'paid' ? 'Pagamento em dia' : 'Pagamento pendente',
+        status: paymentStatus,
+        message: paymentMessage,
         nextDate: nextOrderDate,
         amount: String(lastOrder.total || '80.00'),
         method: lastOrder.payment_details && lastOrder.payment_details.method === 'pix' ? 'Pix' : 'Cartão de Crédito'
