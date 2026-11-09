@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
     // Buscar pedidos do cliente
     const ordersResponse = await fetch(
-      `${NUVEMSHOP_API}/orders?customer=${customerId}&per_page=10`,
+      `${NUVEMSHOP_API}/orders?customer=${customerId}&per_page=100`,
       {
         headers: {
           'Authorization': `Bearer ${TOKEN}`,
@@ -35,25 +35,45 @@ export default async function handler(req, res) {
     }
 
     // A API retorna um array diretamente
-    const orders = await ordersResponse.json();
+    const allOrders = await ordersResponse.json();
 
-    if (!Array.isArray(orders) || orders.length === 0) {
+    if (!Array.isArray(allOrders) || allOrders.length === 0) {
       return res.status(200).json({
         error: 'Nenhum pedido encontrado',
         lastOrder: null,
         nextOrder: { date: '—' },
-        paymentStatus: { status: 'N/A', message: 'Sem pedidos', nextDate: '—', amount: '—', method: '—' },
-        currentCoffee: { name: 'N/A', details: 'Sem assinatura', frequency: 20 },
+        paymentStatus: { status: 'N/A', message: 'Sem assinatura', nextDate: '—', amount: '—', method: '—' },
+        currentCoffee: { name: 'N/A', details: 'Sem assinatura ativa', frequency: 20 },
+        orderHistory: []
+      });
+    }
+
+    // Filtrar apenas pedidos de assinatura
+    const subscriptionOrders = allOrders.filter(order => order.is_subscription === true);
+
+    if (subscriptionOrders.length === 0) {
+      return res.status(200).json({
+        error: 'Nenhuma assinatura ativa',
+        lastOrder: null,
+        nextOrder: { date: '—' },
+        paymentStatus: { status: 'N/A', message: 'Sem assinatura ativa', nextDate: '—', amount: '—', method: '—' },
+        currentCoffee: { name: 'N/A', details: 'Sem assinatura ativa', frequency: 20 },
         orderHistory: []
       });
     }
 
     // Ordenar por data (mais recente primeiro)
-    const sortedOrders = [...orders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const sortedOrders = [...subscriptionOrders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     const lastOrder = sortedOrders[0];
+
+    // Extrair produto de assinatura (ignora Kit Degustação)
+    const subscriptionProduct = lastOrder.products.find(p => 
+      p.name && !p.name.toLowerCase().includes('kit degustação')
+    ) || lastOrder.products[0];
+
     let nextOrderDate = calculateNextOrderDate(lastOrder);
 
-    // Buscar informações de assinatura se disponível
+    // Tentar buscar data exata de próxima assinatura
     if (lastOrder?.id) {
       try {
         const subscResponse = await fetch(
@@ -80,37 +100,43 @@ export default async function handler(req, res) {
 
     // Formatar resposta
     const data = {
-      lastOrder: lastOrder ? {
+      lastOrder: {
         status: lastOrder.fulfillment_status === 'fulfilled' ? 'Entregue' : 'Pendente',
         date: lastOrder.created_at?.split('T')[0] || '—',
-        name: lastOrder.line_items?.[0]?.product_title || 'Café Premium',
-        details: `${lastOrder.line_items?.[0]?.quantity || 1}x | Grão inteiro`,
+        name: subscriptionProduct?.name || 'Café Premium',
+        details: `${subscriptionProduct?.quantity || 1}x | ${subscriptionProduct?.variant_values?.[0] || 'Grão inteiro'}`,
         id: lastOrder.id,
-        total: String(lastOrder.total || '89,90')
-      } : null,
+        total: String(lastOrder.total || '80.00')
+      },
       
       nextOrder: {
         date: nextOrderDate
       },
       
       paymentStatus: {
-        status: lastOrder?.payment_status === 'paid' ? 'Pago' : 'Recusado',
-        message: lastOrder?.payment_status === 'paid' ? 'Pagamento em dia' : 'Pagamento pendente',
+        status: lastOrder.payment_status === 'paid' ? 'Pago' : 'Recusado',
+        message: lastOrder.payment_status === 'paid' ? 'Pagamento em dia' : 'Pagamento pendente',
         nextDate: nextOrderDate,
-        amount: String(lastOrder?.total || '89,90'),
-        method: lastOrder?.payment_method?.description || 'Cartão •• 4242'
+        amount: String(lastOrder.total || '80.00'),
+        method: lastOrder.payment_details?.method === 'pix' ? 'Pix' : 'Cartão de Crédito'
       },
       
       currentCoffee: {
-        name: lastOrder?.line_items?.[0]?.product_title || 'Espresso Premium',
-        details: 'Café selecionado • Grão inteiro',
+        name: subscriptionProduct?.name || 'Café Premium',
+        details: subscriptionProduct?.variant_values?.[0] || 'Grão inteiro',
         frequency: 20
       },
       
-      orderHistory: sortedOrders.slice(0, 3).map(order => ({
-        status: order.fulfillment_status === 'fulfilled' ? 'Entregue' : 'Pendente',
-        date: order.created_at?.split('T')[0]
-      }))
+      orderHistory: sortedOrders.slice(0, 5).map(order => {
+        const product = order.products.find(p => 
+          p.name && !p.name.toLowerCase().includes('kit degustação')
+        ) || order.products[0];
+        return {
+          status: order.fulfillment_status === 'fulfilled' ? 'Entregue' : 'Pendente',
+          date: order.created_at?.split('T')[0],
+          name: product?.name
+        };
+      })
     };
 
     return res.status(200).json(data);
