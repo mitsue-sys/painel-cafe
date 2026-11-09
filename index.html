@@ -10,39 +10,39 @@
     --text: #1f2937;
     --text-light: #666;
   }
-  
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  
+
   body {
     background: var(--bg);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     padding: 40px 20px;
   }
-  
+
   .container { max-width: 900px; margin: 0 auto; }
-  
+
   header { margin-bottom: 40px; }
   h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
   .subtitle { font-size: 14px; color: var(--text-light); }
-  
+
   .loading { text-align: center; padding: 40px; color: var(--text-light); }
   .error { background: #fee2e2; padding: 16px; border: 2px solid #000; margin-bottom: 20px; color: #991b1b; }
-  
+
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 20px;
   }
-  
+
   .card {
     background: var(--card-bg);
     border: 1px solid var(--border);
     padding: 20px;
   }
-  
+
   .card.featured { border: 2px solid var(--accent); }
-  
+
   .card h2 {
     font-size: 10px;
     font-weight: 700;
@@ -51,20 +51,20 @@
     color: var(--text-light);
     margin-bottom: 10px;
   }
-  
+
   .card h3 {
     font-size: 18px;
     font-weight: 700;
     margin-bottom: 4px;
   }
-  
+
   .big-number {
     font-size: 16px;
     font-weight: 700;
     color: var(--accent);
     margin: 12px 0 8px 0;
   }
-  
+
   .badge {
     display: inline-block;
     padding: 4px 12px;
@@ -75,7 +75,7 @@
     border-radius: 20px;
     margin-top: 8px;
   }
-  
+
   .info-row {
     display: flex;
     justify-content: space-between;
@@ -83,20 +83,34 @@
     border-bottom: 1px solid var(--border);
     font-size: 13px;
   }
-  
+
   .info-row:last-child { border-bottom: none; }
   .info-row .value { font-weight: 600; }
-  
+
   .item {
     display: flex;
     gap: 12px;
     padding: 12px 0;
     border-bottom: 1px solid var(--border);
   }
-  
+
   .item:last-child { border-bottom: none; }
-  
+
   .icon {
+    width: 48px;
+    height: 48px;
+    background: #f5e6d3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .icon-small {
     width: 36px;
     height: 36px;
     background: #f5e6d3;
@@ -105,18 +119,21 @@
     justify-content: center;
     font-size: 18px;
     flex-shrink: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
   }
-  
+
   .item-name {
     font-weight: 600;
     font-size: 13px;
   }
-  
+
   .item-detail {
     font-size: 11px;
     color: var(--text-light);
   }
-  
+
   button {
     width: 100%;
     padding: 10px 16px;
@@ -129,18 +146,18 @@
     margin-top: 12px;
     transition: all 0.2s;
   }
-  
+
   button:hover {
     background: #0d1810;
     border-color: #0d1810;
   }
-  
+
   .freq-group {
     display: flex;
     gap: 6px;
     margin: 8px 0 12px 0;
   }
-  
+
   .freq-btn {
     flex: 1;
     padding: 6px;
@@ -151,22 +168,22 @@
     font-weight: 600;
     cursor: pointer;
   }
-  
+
   .freq-btn.active {
     background: var(--accent);
     color: var(--accent-text);
     border-color: var(--accent);
   }
-  
+
   .full-width { grid-column: 1 / -1; }
-  
-  .cancel-btn { 
+
+  .cancel-btn {
     border-color: #dc2626;
     background: transparent;
     color: #dc2626;
   }
-  
-  .cancel-btn:hover { 
+
+  .cancel-btn:hover {
     background: #dc2626;
     color: white;
   }
@@ -177,7 +194,7 @@
     <h1>Seu Painel</h1>
     <p class="subtitle">Gerencie sua assinatura de café</p>
   </header>
-  
+
   <div id="error-container"></div>
   <div id="loading" class="loading">Carregando suas informações...</div>
   <div id="content" style="display: none;"></div>
@@ -200,7 +217,7 @@
     const paymentStatus = data.paymentStatus || {};
     const currentCoffee = data.currentCoffee || {};
     const orderHistory = data.orderHistory || [];
-    
+
     return `
       <div class="grid">
         <!-- Próximo Pedido -->
@@ -209,7 +226,7 @@
           <div class="big-number">${nextOrder.date || '—'}</div>
           <p style="font-size: 12px; color: var(--text-light); margin: 0;">Seu pedido de café será gerado automaticamente.</p>
         </div>
-        
+
         <!-- Status Pagamento -->
         <div class="card">
           <h2>Status do pagamento</h2>
@@ -228,12 +245,12 @@
             <span class="value">${paymentStatus.method || 'Cartão •• 4242'}</span>
           </div>
         </div>
-        
+
         <!-- Café Atual -->
         <div class="card">
           <h2>Café da sua assinatura</h2>
           <div class="item">
-            <div class="icon">☕</div>
+            <div class="icon" id="coffee-img-current"></div>
             <div>
               <div class="item-name">${currentCoffee.name || 'Espresso Premium'}</div>
               <div class="item-detail">${currentCoffee.details || 'Etiópia • Grão inteiro'}</div>
@@ -248,11 +265,11 @@
           <a href="https://docs.google.com/forms/d/e/1FAIpQLSenz1z2Bjh2JI8Q_WFJmS1ztDfttbgxwikovHOibwzsrmbk2w/viewform?usp=header" target="_blank" style="display:block; padding: 10px 16px; border: 2px solid var(--accent); background: var(--accent); color: var(--accent-text); font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 12px; text-decoration: none; text-align: center;">Mudar Café</a>
           <a href="https://docs.google.com/forms/d/e/1FAIpQLSenz1z2Bjh2JI8Q_WFJmS1ztDfttbgxwikovHOibwzsrmbk2w/viewform?usp=header" target="_blank" style="display:block; padding: 10px 16px; border: 2px solid var(--accent); background: var(--accent); color: var(--accent-text); font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 12px; text-decoration: none; text-align: center;">Pular Pedido</a>
         </div>
-        
+
         <!-- Histórico com Último Pedido -->
         <div class="card full-width">
           <h2>Histórico recente</h2>
-          
+
           <h3 style="font-size: 14px; margin: 16px 0 12px 0;">Último pedido</h3>
           <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);">
             <div>
@@ -262,27 +279,28 @@
             <span class="badge">Completo</span>
           </div>
           <div class="item">
-            <div class="icon">☕</div>
+            <div class="icon-small" id="coffee-img-last-order"></div>
             <div>
               <div class="item-name">${lastOrder.name || 'Café Premium'}</div>
               <div class="item-detail">${lastOrder.details || '500g | Grão inteiro'}</div>
             </div>
           </div>
-          
+
           <h3 style="font-size: 14px; margin: 16px 0 12px 0;">Anteriores</h3>
-          ${orderHistory.map(order => `
+          ${orderHistory.map((order, idx) => `
             <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);">
               <div>
                 <strong style="font-size: 13px;">${order.status || 'Entregue'}</strong>
                 <div style="font-size: 11px; color: var(--text-light);">${formatDate(order.date)}</div>
+                <div style="font-size: 11px; color: var(--text-light); font-weight: 500;">${order.name || 'Café'}</div>
               </div>
               <span class="badge">Completo</span>
             </div>
           `).join('')}
-          
+
           <button onclick="alert('Ver histórico completo')">Ver Todos os Pedidos</button>
         </div>
-        
+
         <!-- Cancelar -->
         <div class="card full-width">
           <a href="https://docs.google.com/forms/d/e/1FAIpQLSddlKeLOpoGO6nKyxOKIkW7-jGYOUkJt1ckorG1Dqh0ng_Hzg/viewform?usp=header" target="_blank" style="display:block; padding: 10px 16px; border: 2px solid #dc2626; background: transparent; color: #dc2626; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 12px; text-decoration: none; text-align: center;">Cancelar Minha Assinatura</a>
@@ -295,16 +313,16 @@
     const loading = document.getElementById('loading');
     const errorContainer = document.getElementById('error-container');
     const content = document.getElementById('content');
-    
+
     try {
       // Pega customerId do URL ou tenta obter do Nuvemshop
       const params = new URLSearchParams(window.location.search);
       let customerId = params.get('customerId') || localStorage.getItem('customerId') || '1';
-      
+
       // Tenta chamar a API backend
       const response = await fetch(`/api/orders?customerId=${customerId}`);
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Erro ao carregar dados');
       }
@@ -312,7 +330,26 @@
       loading.style.display = 'none';
       content.innerHTML = renderPanel(data);
       content.style.display = 'block';
-      
+
+      // Carregar imagens dos produtos
+      setTimeout(() => {
+        // Imagem do café atual (maior)
+        if (data.currentCoffee && data.lastOrder?.image) {
+          const imgElement = document.getElementById('coffee-img-current');
+          if (imgElement && data.lastOrder.image) {
+            imgElement.style.backgroundImage = `url('${data.lastOrder.image}')`;
+          }
+        }
+
+        // Imagem do último pedido (menor)
+        if (data.lastOrder?.image) {
+          const imgElement = document.getElementById('coffee-img-last-order');
+          if (imgElement) {
+            imgElement.style.backgroundImage = `url('${data.lastOrder.image}')`;
+          }
+        }
+      }, 100);
+
     } catch (error) {
       console.error('Erro:', error);
       loading.style.display = 'none';
