@@ -45,7 +45,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // Filtrar: assinatura + ignora Kit Degustação
+    // Filtrar assinatura
     const subscriptionOrders = allOrders.filter(order => {
       if (order.is_subscription !== true) {
         return false;
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // Contar qual café aparece mais (assinatura real)
+    // Café principal
     const cafeCounts = {};
     subscriptionOrders.slice(0, 30).forEach(order => {
       order.products.forEach(p => {
@@ -81,12 +81,11 @@ export default async function handler(req, res) {
       cafeCounts[a] > cafeCounts[b] ? a : b
     );
 
-    // Filtrar apenas café principal
     const mainOrders = subscriptionOrders.filter(order =>
       order.products.some(p => p.name === mainCafeName)
     );
 
-    // REMOVER DUPLICATAS: Um pedido por dia
+    // REMOVER DUPLICATAS por dia
     const uniqueByDay = {};
     mainOrders.forEach(order => {
       const date = order.created_at.split('T')[0];
@@ -101,7 +100,6 @@ export default async function handler(req, res) {
 
     const lastOrder = sortedOrders[0];
 
-    // Pegar produto
     let subscriptionProduct = null;
     for (let i = 0; i < lastOrder.products.length; i++) {
       const p = lastOrder.products[i];
@@ -113,7 +111,7 @@ export default async function handler(req, res) {
 
     let nextOrderDate = calculateNextOrderDate(lastOrder);
 
-    // Determinar status de pagamento correto
+    // Status de pagamento CORRETO
     let paymentStatus = 'Pago';
     let paymentMessage = 'Pagamento em dia';
     
@@ -127,7 +125,7 @@ export default async function handler(req, res) {
 
     const data = {
       lastOrder: {
-        status: lastOrder.fulfillment_status && lastOrder.fulfillment_status.trim() !== '' ? 'Entregue' : 'Processando',
+        status: lastOrder.payment_status === 'paid' ? 'Feito' : 'Recusado',
         date: lastOrder.created_at ? lastOrder.created_at.split('T')[0] : '—',
         name: subscriptionProduct ? subscriptionProduct.name : 'Café Premium',
         details: subscriptionProduct ? `${subscriptionProduct.quantity}x | ${subscriptionProduct.variant_values && subscriptionProduct.variant_values[0] ? subscriptionProduct.variant_values[0] : 'Grão inteiro'}` : '—',
@@ -154,7 +152,7 @@ export default async function handler(req, res) {
         frequency: 20
       },
       
-      orderHistory: sortedOrders.slice(0, 5).map(order => {
+      orderHistory: sortedOrders.slice(1, 6).map(order => {
         let product = null;
         for (let i = 0; i < order.products.length; i++) {
           const p = order.products[i];
@@ -164,8 +162,11 @@ export default async function handler(req, res) {
           }
         }
         
+        // Mostrar "Feito" para histórico anterior
+        const status = order.payment_status === 'paid' ? 'Feito' : 'Recusado';
+        
         return {
-          status: order.fulfillment_status && order.fulfillment_status.trim() !== '' ? 'Entregue' : 'Processando',
+          status: status,
           date: order.created_at ? order.created_at.split('T')[0] : '—',
           name: product ? product.name : 'Café',
           image: product && product.image ? product.image.src : null
