@@ -17,7 +17,6 @@ export default async function handler(req, res) {
     const NUVEMSHOP_API = 'https://api.nuvemshop.com.br/v1/6800777';
     const TOKEN = '20176ee30509eb5bad4eed29e01ec96eb4dfa350';
 
-    // Buscar pedidos do cliente
     const ordersResponse = await fetch(
       `${NUVEMSHOP_API}/orders?customer=${customerId}&per_page=100`,
       {
@@ -30,11 +29,9 @@ export default async function handler(req, res) {
     );
 
     if (!ordersResponse.ok) {
-      console.error('Nuvemshop API Error:', ordersResponse.status, ordersResponse.statusText);
       throw new Error(`API Error: ${ordersResponse.statusText}`);
     }
 
-    // A API retorna um array diretamente
     const allOrders = await ordersResponse.json();
 
     if (!Array.isArray(allOrders) || allOrders.length === 0) {
@@ -48,7 +45,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Filtrar apenas pedidos de assinatura
     const subscriptionOrders = allOrders.filter(order => order.is_subscription === true);
 
     if (subscriptionOrders.length === 0) {
@@ -62,53 +58,37 @@ export default async function handler(req, res) {
       });
     }
 
-    // Ordenar por data (mais recente primeiro)
-    const sortedOrders = [...subscriptionOrders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const sortedOrders = subscriptionOrders.sort((a, b) => 
+      new Date(b.created_at) - new Date(a.created_at)
+    );
+
     const lastOrder = sortedOrders[0];
 
-    // Extrair produto de assinatura (ignora Kit Degustação)
-    const subscriptionProduct = lastOrder.products.find(p => 
-      p.name && !p.name.toLowerCase().includes('kit degustação')
-    ) || lastOrder.products[0];
+    let subscriptionProduct = null;
+    for (let i = 0; i < lastOrder.products.length; i++) {
+      const product = lastOrder.products[i];
+      if (product.name && !product.name.toLowerCase().includes('kit degustação')) {
+        subscriptionProduct = product;
+        break;
+      }
+    }
+    
+    if (!subscriptionProduct && lastOrder.products.length > 0) {
+      subscriptionProduct = lastOrder.products[0];
+    }
 
     let nextOrderDate = calculateNextOrderDate(lastOrder);
 
-    // Tentar buscar data exata de próxima assinatura
-    if (lastOrder?.id) {
-      try {
-        const subscResponse = await fetch(
-          `${NUVEMSHOP_API}/orders/${lastOrder.id}/subscriptions`,
-          {
-            headers: {
-              'Authorization': `Bearer ${TOKEN}`,
-              'Accept': 'application/json',
-              'User-Agent': 'CafePorelasIntegration/1.0'
-            }
-          }
-        );
-        
-        if (subscResponse.ok) {
-          const subscData = await subscResponse.json();
-          if (Array.isArray(subscData) && subscData.length > 0 && subscData[0].next_execution) {
-            nextOrderDate = formatDate(subscData[0].next_execution);
-          }
-        }
-      } catch (e) {
-        console.log('Subscription fetch skipped:', e.message);
-      }
-    }
-
-    // Formatar resposta
     const data = {
       lastOrder: {
-  status: lastOrder.fulfillment_status && lastOrder.fulfillment_status !== '' ? 'Entregue' : 'Processando',
-  date: lastOrder.created_at?.split('T')[0] || '—',
-  name: subscriptionProduct?.name || 'Café Premium',
-  details: `${subscriptionProduct?.quantity || 1}x | ${subscriptionProduct?.variant_values?.[0] || 'Grão inteiro'}`,
-  id: lastOrder.id,
-  total: String(lastOrder.total || '80.00'),
-  image: subscriptionProduct?.image?.src || null
-},
+        status: lastOrder.fulfillment_status && lastOrder.fulfillment_status.trim() !== '' ? 'Entregue' : 'Processando',
+        date: lastOrder.created_at ? lastOrder.created_at.split('T')[0] : '—',
+        name: subscriptionProduct ? subscriptionProduct.name : 'Café Premium',
+        details: subscriptionProduct ? `${subscriptionProduct.quantity}x | ${subscriptionProduct.variant_values && subscriptionProduct.variant_values[0] ? subscriptionProduct.variant_values[0] : 'Grão inteiro'}` : '—',
+        id: lastOrder.id,
+        total: String(lastOrder.total || '80.00'),
+        image: subscriptionProduct && subscriptionProduct.image ? subscriptionProduct.image.src : null
+      },
       
       nextOrder: {
         date: nextOrderDate
@@ -119,26 +99,36 @@ export default async function handler(req, res) {
         message: lastOrder.payment_status === 'paid' ? 'Pagamento em dia' : 'Pagamento pendente',
         nextDate: nextOrderDate,
         amount: String(lastOrder.total || '80.00'),
-        method: lastOrder.payment_details?.method === 'pix' ? 'Pix' : 'Cartão de Crédito'
+        method: lastOrder.payment_details && lastOrder.payment_details.method === 'pix' ? 'Pix' : 'Cartão de Crédito'
       },
       
       currentCoffee: {
-        name: subscriptionProduct?.name || 'Café Premium',
-        details: subscriptionProduct?.variant_values?.[0] || 'Grão inteiro',
+        name: subscriptionProduct ? subscriptionProduct.name : 'Café Premium',
+        details: subscriptionProduct && subscriptionProduct.variant_values && subscriptionProduct.variant_values[0] ? subscriptionProduct.variant_values[0] : 'Grão inteiro',
         frequency: 20
       },
       
-      orderHistory: sortedOrders.slice(0, 3).map((order, idx) => {
-  const product = order.products.find(p => 
-    p.name && !p.name.toLowerCase().includes('kit degustação')
-  ) || order.products[0];
-  return {
-    status: order.fulfillment_status && order.fulfillment_status !== '' ? 'Entregue' : 'Processando',
-    date: order.created_at?.split('T')[0],
-    name: product?.name,
-    image: product?.image?.src || null
-  };
-})
+      orderHistory: sortedOrders.slice(0, 5).map(order => {
+        let product = null;
+        for (let i = 0; i < order.products.length; i++) {
+          const p = order.products[i];
+          if (p.name && !p.name.toLowerCase().includes('kit degustação')) {
+            product = p;
+            break;
+          }
+        }
+        if (!product && order.products.length > 0) {
+          product = order.products[0];
+        }
+        
+        return {
+          status: order.fulfillment_status && order.fulfillment_status.trim() !== '' ? 'Entregue' : 'Processando',
+          date: order.created_at ? order.created_at.split('T')[0] : '—',
+          name: product ? product.name : 'Café',
+          image: product && product.image ? product.image.src : null
+        };
+      })
+    };
 
     return res.status(200).json(data);
 
@@ -151,6 +141,16 @@ export default async function handler(req, res) {
   }
 }
 
+function calculateNextOrderDate(lastOrder) {
+  if (!lastOrder || !lastOrder.created_at) return '—';
+  
+  const lastDate = new Date(lastOrder.created_at);
+  const nextDate = new Date(lastDate);
+  nextDate.setDate(nextDate.getDate() + 20);
+  
+  return formatDate(nextDate.toISOString());
+}
+
 function formatDate(dateString) {
   if (!dateString) return '—';
   const date = new Date(dateString);
@@ -158,14 +158,4 @@ function formatDate(dateString) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
   return `${day}/${month}/${year}`;
-}
-
-function calculateNextOrderDate(lastOrder) {
-  if (!lastOrder) return '—';
-  
-  const lastDate = new Date(lastOrder.created_at);
-  const nextDate = new Date(lastDate);
-  nextDate.setDate(nextDate.getDate() + 20);
-  
-  return formatDate(nextDate.toISOString());
 }
