@@ -20,22 +20,34 @@ export default async function handler(req, res) {
     const TOKEN = '20176ee30509eb5bad4eed29e01ec96eb4dfa350';
 
     // Buscar pedidos do cliente
-    const ordersResponse = await fetch(
-      `${NUVEMSHOP_API}/orders?customer=${customerId}&per_page=100`,
-      {
-        headers: {
-          'Authorization': `Bearer ${TOKEN}`,
-          'Accept': 'application/json',
-          'User-Agent': 'CafePorelasIntegration/1.0'
-        }
+    const url = `${NUVEMSHOP_API}/orders?customer=${customerId}&per_page=100`;
+    console.log(`🌐 Chamando: ${url}`);
+
+    const ordersResponse = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${TOKEN}`,
+        'Accept': 'application/json',
+        'User-Agent': 'CafePorelasIntegration/1.0'
       }
-    );
+    });
+
+    console.log(`📊 HTTP Status: ${ordersResponse.status}`);
 
     if (!ordersResponse.ok) {
-      throw new Error(`API Error: ${ordersResponse.statusText}`);
+      const errorText = await ordersResponse.text();
+      console.error(`❌ Erro HTTP ${ordersResponse.status}: ${errorText}`);
+      throw new Error(`API Error: ${ordersResponse.status} ${ordersResponse.statusText}`);
     }
 
     const allOrders = await ordersResponse.json();
+    console.log(`📊 Total de pedidos buscados: ${allOrders.length}`);
+
+    // Debug: mostrar quais customers temos
+    if (Array.isArray(allOrders) && allOrders.length > 0) {
+      const customerIds = [...new Set(allOrders.map(o => o.customer?.id))];
+      console.log(`👥 Customer IDs nos pedidos: ${customerIds.join(', ')}`);
+      console.log(`🎯 Procurando por: ${customerId}`);
+    }
 
     if (!Array.isArray(allOrders) || allOrders.length === 0) {
       return res.status(200).json({
@@ -48,10 +60,18 @@ export default async function handler(req, res) {
       });
     }
 
+    // DEBUG: Mostrar cada pedido e seu is_subscription
+    console.log('=== ANÁLISE DETALHADA ===');
+    allOrders.forEach((order, idx) => {
+      console.log(`Pedido ${idx}: ID=${order.id}, customer_id=${order.customer?.id}, is_subscription=${order.is_subscription}, payment_status=${order.payment_status}, created=${order.created_at}`);
+    });
+
     // Filtrar apenas pedidos de assinatura (is_subscription: true)
     const subscriptionOrders = allOrders.filter(order => order.is_subscription === true);
+    console.log(`✅ Pedidos de assinatura encontrados: ${subscriptionOrders.length}`);
 
     if (subscriptionOrders.length === 0) {
+      console.log('❌ Cliente não tem assinatura ativa!');
       return res.status(200).json({
         error: 'Nenhuma assinatura ativa',
         lastOrder: null,
