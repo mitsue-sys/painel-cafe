@@ -19,8 +19,8 @@ export default async function handler(req, res) {
     const NUVEMSHOP_API = 'https://api.nuvemshop.com.br/v1/6800777';
     const TOKEN = '20176ee30509eb5bad4eed29e01ec96eb4dfa350';
 
-    // Buscar pedidos do cliente
-    const url = `${NUVEMSHOP_API}/orders?customer=${customerId}&per_page=100`;
+    // Buscar TODOS os pedidos (filtro ?customer= não funciona)
+    const url = `${NUVEMSHOP_API}/orders?per_page=100`;
     console.log(`🌐 Chamando: ${url}`);
 
     const ordersResponse = await fetch(url, {
@@ -39,17 +39,15 @@ export default async function handler(req, res) {
       throw new Error(`API Error: ${ordersResponse.status} ${ordersResponse.statusText}`);
     }
 
-    const allOrders = await ordersResponse.json();
-    console.log(`📊 Total de pedidos buscados: ${allOrders.length}`);
+    let allOrders = await ordersResponse.json();
+    console.log(`📊 Total de pedidos brutos da loja: ${allOrders.length}`);
 
-    // Debug: mostrar quais customers temos
-    if (Array.isArray(allOrders) && allOrders.length > 0) {
-      const customerIds = [...new Set(allOrders.map(o => o.customer?.id))];
-      console.log(`👥 Customer IDs nos pedidos: ${customerIds.join(', ')}`);
-      console.log(`🎯 Procurando por: ${customerId}`);
-    }
+    // FILTRAR PELO CLIENTE CORRETO (no código, não na API)
+    allOrders = allOrders.filter(order => String(order.customer?.id) === String(customerId));
+    console.log(`🎯 Pedidos do cliente ${customerId}: ${allOrders.length}`);
 
     if (!Array.isArray(allOrders) || allOrders.length === 0) {
+      console.log(`⚠️ Cliente ${customerId} não tem pedidos`);
       return res.status(200).json({
         error: 'Nenhum pedido encontrado',
         lastOrder: null,
@@ -60,18 +58,12 @@ export default async function handler(req, res) {
       });
     }
 
-    // DEBUG: Mostrar cada pedido e seu is_subscription
-    console.log('=== ANÁLISE DETALHADA ===');
-    allOrders.forEach((order, idx) => {
-      console.log(`Pedido ${idx}: ID=${order.id}, customer_id=${order.customer?.id}, is_subscription=${order.is_subscription}, payment_status=${order.payment_status}, created=${order.created_at}`);
-    });
-
-    // Filtrar apenas pedidos de assinatura (is_subscription: true)
+    // FILTRAR apenas PEDIDOS DE ASSINATURA
     const subscriptionOrders = allOrders.filter(order => order.is_subscription === true);
-    console.log(`✅ Pedidos de assinatura encontrados: ${subscriptionOrders.length}`);
+    console.log(`✅ Pedidos de assinatura do cliente: ${subscriptionOrders.length}`);
 
     if (subscriptionOrders.length === 0) {
-      console.log('❌ Cliente não tem assinatura ativa!');
+      console.log(`❌ Cliente ${customerId} não tem assinatura ativa`);
       return res.status(200).json({
         error: 'Nenhuma assinatura ativa',
         lastOrder: null,
@@ -88,33 +80,25 @@ export default async function handler(req, res) {
     );
 
     const lastOrder = sortedOrders[0];
+    console.log(`📦 Último pedido de assinatura: ID=${lastOrder.id}, data=${lastOrder.created_at}`);
 
-    // Encontrar o produto de assinatura (ignora Kit Degustação)
-    let subscriptionProduct = null;
-    for (let i = 0; i < lastOrder.products.length; i++) {
-      const product = lastOrder.products[i];
-      if (product.name && !product.name.toLowerCase().includes('kit degustação')) {
-        subscriptionProduct = product;
-        break;
-      }
-    }
-
-    if (!subscriptionProduct && lastOrder.products.length > 0) {
-      subscriptionProduct = lastOrder.products[0];
-    }
+    // Extrair produto de assinatura
+    const subscriptionProduct = lastOrder.products.find(p =>
+      p.name && !p.name.toLowerCase().includes('kit degustação')
+    ) || lastOrder.products[0];
 
     let nextOrderDate = calculateNextOrderDate(lastOrder);
 
     // Formatar resposta
     const data = {
       lastOrder: {
-        status: lastOrder.fulfillment_status && lastOrder.fulfillment_status.trim() !== '' ? 'Entregue' : 'Processando',
-        date: lastOrder.created_at ? lastOrder.created_at.split('T')[0] : '—',
-        name: subscriptionProduct ? subscriptionProduct.name : 'Café Premium',
-        details: subscriptionProduct ? `${subscriptionProduct.quantity}x | ${subscriptionProduct.variant_values && subscriptionProduct.variant_values[0] ? subscriptionProduct.variant_values[0] : 'Grão inteiro'}` : '—',
+        status: lastOrder.fulfillment_status === 'fulfilled' ? 'Entregue' : 'Processando',
+        date: lastOrder.created_at?.split('T')[0] || '—',
+        name: subscriptionProduct?.name || 'Café Premium',
+        details: `${subscriptionProduct?.quantity || 1}x | ${subscriptionProduct?.variant_values?.[0] || 'Grão inteiro'}`,
         id: lastOrder.id,
         total: String(lastOrder.total || '80.00'),
-        image: subscriptionProduct && subscriptionProduct.image ? subscriptionProduct.image.src : null
+        image: subscriptionProduct?.image?.src || null
       },
 
       nextOrder: {
@@ -126,56 +110,38 @@ export default async function handler(req, res) {
         message: lastOrder.payment_status === 'paid' ? 'Pagamento em dia' : 'Pagamento pendente',
         nextDate: nextOrderDate,
         amount: String(lastOrder.total || '80.00'),
-        method: lastOrder.payment_details && lastOrder.payment_details.method === 'pix' ? 'Pix' : 'Cartão de Crédito'
+        method: lastOrder.payment_details?.method === 'pix' ? 'Pix' : 'Cartão de Crédito'
       },
 
       currentCoffee: {
-        name: subscriptionProduct ? subscriptionProduct.name : 'Café Premium',
-        details: subscriptionProduct && subscriptionProduct.variant_values && subscriptionProduct.variant_values[0] ? subscriptionProduct.variant_values[0] : 'Grão inteiro',
+        name: subscriptionProduct?.name || 'Café Premium',
+        details: subscriptionProduct?.variant_values?.[0] || 'Grão inteiro',
         frequency: 20
       },
 
       orderHistory: sortedOrders.slice(0, 5).map(order => {
-        let product = null;
-        for (let i = 0; i < order.products.length; i++) {
-          const p = order.products[i];
-          if (p.name && !p.name.toLowerCase().includes('kit degustação')) {
-            product = p;
-            break;
-          }
-        }
-        if (!product && order.products.length > 0) {
-          product = order.products[0];
-        }
-
+        const product = order.products.find(p =>
+          p.name && !p.name.toLowerCase().includes('kit degustação')
+        ) || order.products[0];
         return {
-          status: order.fulfillment_status && order.fulfillment_status.trim() !== '' ? 'Entregue' : 'Processando',
-          date: order.created_at ? order.created_at.split('T')[0] : '—',
-          name: product ? product.name : 'Café',
-          image: product && product.image ? product.image.src : null
+          status: order.fulfillment_status === 'fulfilled' ? 'Entregue' : 'Processando',
+          date: order.created_at?.split('T')[0],
+          name: product?.name,
+          image: product?.image?.src || null
         };
       })
     };
 
+    console.log('✅ Resposta preparada com sucesso');
     return res.status(200).json(data);
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('❌ Erro geral:', error.message);
     return res.status(500).json({
       error: 'Erro ao carregar dados',
       message: error.message
     });
   }
-}
-
-function calculateNextOrderDate(lastOrder) {
-  if (!lastOrder || !lastOrder.created_at) return '—';
-
-  const lastDate = new Date(lastOrder.created_at);
-  const nextDate = new Date(lastDate);
-  nextDate.setDate(nextDate.getDate() + 20);
-
-  return formatDate(nextDate.toISOString());
 }
 
 function formatDate(dateString) {
@@ -185,4 +151,14 @@ function formatDate(dateString) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
   return `${day}/${month}/${year}`;
+}
+
+function calculateNextOrderDate(lastOrder) {
+  if (!lastOrder) return '—';
+
+  const lastDate = new Date(lastOrder.created_at);
+  const nextDate = new Date(lastDate);
+  nextDate.setDate(nextDate.getDate() + 20);
+
+  return formatDate(nextDate.toISOString());
 }
