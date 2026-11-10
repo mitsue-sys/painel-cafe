@@ -231,7 +231,7 @@
         <div class="card">
           <h2>Status do pagamento</h2>
           <h3>${paymentStatus.status || 'Pago'}</h3>
-          <span class="badge">${paymentStatus.message || 'Pagamento em dia'}</span>
+          <span class="badge" style="${paymentStatus.status === 'Recusado' ? 'background: #dc2626; color: white;' : 'background: #059669; color: white;'}">${paymentStatus.message || 'Pagamento em dia'}</span>
           <div class="info-row">
             <span>Próximo pagamento:</span>
             <span class="value">${paymentStatus.nextDate || '—'}</span>
@@ -273,7 +273,7 @@
           <h3 style="font-size: 14px; margin: 16px 0 12px 0;">Último pedido</h3>
           <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);">
             <div>
-              <strong style="font-size: 13px;">${lastOrder.status || 'Entregue'}</strong>
+              <strong style="font-size: 13px;">${lastOrder.status === 'Processando' ? 'Recebido' : lastOrder.status || 'Entregue'}</strong>
               <div style="font-size: 11px; color: var(--text-light);">${formatDate(lastOrder.date)}</div>
             </div>
             <span class="badge">Completo</span>
@@ -302,8 +302,8 @@
         </div>
 
         <!-- Cancelar -->
-        <div class="card full-width">
-          <a href="https://docs.google.com/forms/d/e/1FAIpQLSddlKeLOpoGO6nKyxOKIkW7-jGYOUkJt1ckorG1Dqh0ng_Hzg/viewform?usp=header" target="_blank" style="display:block; padding: 10px 16px; border: 2px solid #dc2626; background: transparent; color: #dc2626; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 12px; text-decoration: none; text-align: center;">Cancelar Minha Assinatura</a>
+        <div style="margin-top: 20px;">
+          <a href="https://docs.google.com/forms/d/e/1FAIpQLSddlKeLOpoGO6nKyxOKIkW7-jGYOUkJt1ckorG1Dqh0ng_Hzg/viewform?usp=header" target="_blank" style="display:block; padding: 10px 16px; border: 2px solid #dc2626; background: transparent; color: #dc2626; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; text-align: center;">Cancelar Minha Assinatura</a>
         </div>
       </div>
     `;
