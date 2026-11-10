@@ -224,7 +224,8 @@
         <div class="card featured">
           <h3>Próximo pedido</h3>
           <div class="big-number">${nextOrder.date || '—'}</div>
-          <p style="font-size: 12px; color: var(--text-light); margin: 0;">Seu pedido de café será gerado automaticamente.</p>
+          <p style="font-size: 12px; color: var(--text-light); margin: 0; margin-bottom: 12px;">Seu pedido de café será gerado automaticamente.</p>
+          <a href="https://docs.google.com/forms/d/e/1FAIpQLSenz1z2Bjh2JI8Q_WFJmS1ztDfttbgxwikovHOibwzsrmbk2w/viewform?usp=header" target="_blank" style="display:block; padding: 10px 16px; border: 2px solid var(--accent); background: var(--accent); color: var(--accent-text); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; text-align: center;">Pular Pedido</a>
         </div>
 
         <!-- Status Pagamento -->
@@ -256,14 +257,9 @@
               <div class="item-detail">${currentCoffee.details || 'Etiópia • Grão inteiro'}</div>
             </div>
           </div>
-          <p style="font-size: 11px; color: var(--text-light); margin: 12px 0 6px 0;">Frequência:</p>
-          <div class="freq-group">
-            <button class="freq-btn" onclick="setFreq(15, this)">15d</button>
-            <button class="freq-btn active" onclick="setFreq(20, this)">20d</button>
-            <button class="freq-btn" onclick="setFreq(30, this)">30d</button>
-          </div>
+          <p style="font-size: 11px; color: var(--text-light); margin: 12px 0 6px 0;">Frequência: 20 dias</p>
           <a href="https://docs.google.com/forms/d/e/1FAIpQLSenz1z2Bjh2JI8Q_WFJmS1ztDfttbgxwikovHOibwzsrmbk2w/viewform?usp=header" target="_blank" style="display:block; padding: 10px 16px; border: 2px solid var(--accent); background: var(--accent); color: var(--accent-text); font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 12px; text-decoration: none; text-align: center;">Mudar Café</a>
-          <a href="https://docs.google.com/forms/d/e/1FAIpQLSenz1z2Bjh2JI8Q_WFJmS1ztDfttbgxwikovHOibwzsrmbk2w/viewform?usp=header" target="_blank" style="display:block; padding: 10px 16px; border: 2px solid var(--accent); background: var(--accent); color: var(--accent-text); font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 12px; text-decoration: none; text-align: center;">Pular Pedido</a>
+          <a href="https://docs.google.com/forms/d/e/1FAIpQLSenz1z2Bjh2JI8Q_WFJmS1ztDfttbgxwikovHOibwzsrmbk2w/viewform?usp=header" target="_blank" style="display:block; padding: 10px 16px; border: 2px solid var(--accent); background: var(--accent); color: var(--accent-text); font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 12px; text-decoration: none; text-align: center;">Mudar Frequência</a>
         </div>
 
         <!-- Histórico com Último Pedido -->
@@ -298,12 +294,12 @@
             </div>
           `).join('')}
 
-          <button onclick="alert('Ver histórico completo')">Ver Todos os Pedidos</button>
+          <button onclick="window.top.location.href = '/account/'">Ver Todos os Pedidos</button>
         </div>
 
         <!-- Cancelar -->
-        <div style="margin-top: 20px;">
-          <a href="https://docs.google.com/forms/d/e/1FAIpQLSddlKeLOpoGO6nKyxOKIkW7-jGYOUkJt1ckorG1Dqh0ng_Hzg/viewform?usp=header" target="_blank" style="display:block; padding: 10px 16px; border: 2px solid #dc2626; background: transparent; color: #dc2626; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; text-align: center;">Cancelar Minha Assinatura</a>
+        <div style="margin-top: 30px; text-align: center;">
+          <a href="https://docs.google.com/forms/d/e/1FAIpQLSddlKeLOpoGO6nKyxOKIkW7-jGYOUkJt1ckorG1Dqh0ng_Hzg/viewform?usp=header" target="_blank" style="color: #dc2626; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline;">Cancelar Minha Assinatura</a>
         </div>
       </div>
     `;
