@@ -37,7 +37,6 @@
 
   .card {
     background: var(--card-bg);
-    border: 1px solid var(--border);
     padding: 20px;
   }
 
@@ -294,7 +293,7 @@
             </div>
           `).join('')}
 
-          <button onclick="window.top.location.href = '/account/'">Ver Todos os Pedidos</button>
+          <button onclick="try { window.top.location.href = '/account/'; } catch(e) { window.location.href = '/account/'; }">Ver Todos os Pedidos</button>
         </div>
 
         <!-- Cancelar -->
