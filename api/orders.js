@@ -2,21 +2,24 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
+
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   try {
     const { customerId } = req.query;
-    
+    console.log('📥 API recebeu customerId:', customerId);
+
     if (!customerId) {
+      console.error('❌ customerId não fornecido');
       return res.status(400).json({ error: 'customerId is required' });
     }
 
     const NUVEMSHOP_API = 'https://api.nuvemshop.com.br/v1/6800777';
     const TOKEN = '20176ee30509eb5bad4eed29e01ec96eb4dfa350';
 
+    // Buscar pedidos do cliente
     const ordersResponse = await fetch(
       `${NUVEMSHOP_API}/orders?customer=${customerId}&per_page=100`,
       {
@@ -45,16 +48,8 @@ export default async function handler(req, res) {
       });
     }
 
-    // Filtrar assinatura
-    const subscriptionOrders = allOrders.filter(order => {
-      if (order.is_subscription !== true) {
-        return false;
-      }
-      const hasRealProduct = order.products && order.products.some(p => 
-        p.name && !p.name.toLowerCase().includes('kit degustação')
-      );
-      return hasRealProduct;
-    });
+    // Filtrar apenas pedidos de assinatura (is_subscription: true)
+    const subscriptionOrders = allOrders.filter(order => order.is_subscription === true);
 
     if (subscriptionOrders.length === 0) {
       return res.status(200).json({
@@ -67,65 +62,33 @@ export default async function handler(req, res) {
       });
     }
 
-    // Café principal
-    const cafeCounts = {};
-    subscriptionOrders.slice(0, 30).forEach(order => {
-      order.products.forEach(p => {
-        if (p.name && !p.name.toLowerCase().includes('kit degustação')) {
-          cafeCounts[p.name] = (cafeCounts[p.name] || 0) + 1;
-        }
-      });
-    });
-
-    const mainCafeName = Object.keys(cafeCounts).reduce((a, b) => 
-      cafeCounts[a] > cafeCounts[b] ? a : b
-    );
-
-    const mainOrders = subscriptionOrders.filter(order =>
-      order.products.some(p => p.name === mainCafeName)
-    );
-
-    // REMOVER DUPLICATAS por dia
-    const uniqueByDay = {};
-    mainOrders.forEach(order => {
-      const date = order.created_at.split('T')[0];
-      if (!uniqueByDay[date] || new Date(order.created_at) > new Date(uniqueByDay[date].created_at)) {
-        uniqueByDay[date] = order;
-      }
-    });
-
-    const sortedOrders = Object.values(uniqueByDay).sort((a, b) => 
+    // Ordenar por data (mais recente primeiro)
+    const sortedOrders = subscriptionOrders.sort((a, b) =>
       new Date(b.created_at) - new Date(a.created_at)
     );
 
     const lastOrder = sortedOrders[0];
 
+    // Encontrar o produto de assinatura (ignora Kit Degustação)
     let subscriptionProduct = null;
     for (let i = 0; i < lastOrder.products.length; i++) {
-      const p = lastOrder.products[i];
-      if (p.name === mainCafeName) {
-        subscriptionProduct = p;
+      const product = lastOrder.products[i];
+      if (product.name && !product.name.toLowerCase().includes('kit degustação')) {
+        subscriptionProduct = product;
         break;
       }
     }
 
-    let nextOrderDate = calculateNextOrderDate(lastOrder);
-
-    // Status de pagamento CORRETO
-    let paymentStatus = 'Pago';
-    let paymentMessage = 'Pagamento em dia';
-    
-    if (lastOrder.payment_status === 'voided' || lastOrder.payment_status === 'cancelled' || lastOrder.payment_status === 'refunded') {
-      paymentStatus = 'Recusado';
-      paymentMessage = 'Pagamento recusado';
-    } else if (lastOrder.payment_status !== 'paid') {
-      paymentStatus = 'Pendente';
-      paymentMessage = 'Aguardando confirmação';
+    if (!subscriptionProduct && lastOrder.products.length > 0) {
+      subscriptionProduct = lastOrder.products[0];
     }
 
+    let nextOrderDate = calculateNextOrderDate(lastOrder);
+
+    // Formatar resposta
     const data = {
       lastOrder: {
-        status: lastOrder.payment_status === 'paid' ? 'Feito' : 'Recusado',
+        status: lastOrder.fulfillment_status && lastOrder.fulfillment_status.trim() !== '' ? 'Entregue' : 'Processando',
         date: lastOrder.created_at ? lastOrder.created_at.split('T')[0] : '—',
         name: subscriptionProduct ? subscriptionProduct.name : 'Café Premium',
         details: subscriptionProduct ? `${subscriptionProduct.quantity}x | ${subscriptionProduct.variant_values && subscriptionProduct.variant_values[0] ? subscriptionProduct.variant_values[0] : 'Grão inteiro'}` : '—',
@@ -133,40 +96,40 @@ export default async function handler(req, res) {
         total: String(lastOrder.total || '80.00'),
         image: subscriptionProduct && subscriptionProduct.image ? subscriptionProduct.image.src : null
       },
-      
+
       nextOrder: {
         date: nextOrderDate
       },
-      
+
       paymentStatus: {
-        status: paymentStatus,
-        message: paymentMessage,
+        status: lastOrder.payment_status === 'paid' ? 'Pago' : 'Recusado',
+        message: lastOrder.payment_status === 'paid' ? 'Pagamento em dia' : 'Pagamento pendente',
         nextDate: nextOrderDate,
         amount: String(lastOrder.total || '80.00'),
         method: lastOrder.payment_details && lastOrder.payment_details.method === 'pix' ? 'Pix' : 'Cartão de Crédito'
       },
-      
+
       currentCoffee: {
         name: subscriptionProduct ? subscriptionProduct.name : 'Café Premium',
         details: subscriptionProduct && subscriptionProduct.variant_values && subscriptionProduct.variant_values[0] ? subscriptionProduct.variant_values[0] : 'Grão inteiro',
         frequency: 20
       },
-      
-      orderHistory: sortedOrders.slice(1, 6).map(order => {
+
+      orderHistory: sortedOrders.slice(0, 5).map(order => {
         let product = null;
         for (let i = 0; i < order.products.length; i++) {
           const p = order.products[i];
-          if (p.name === mainCafeName) {
+          if (p.name && !p.name.toLowerCase().includes('kit degustação')) {
             product = p;
             break;
           }
         }
-        
-        // Mostrar "Feito" para histórico anterior
-        const status = order.payment_status === 'paid' ? 'Feito' : 'Recusado';
-        
+        if (!product && order.products.length > 0) {
+          product = order.products[0];
+        }
+
         return {
-          status: status,
+          status: order.fulfillment_status && order.fulfillment_status.trim() !== '' ? 'Entregue' : 'Processando',
           date: order.created_at ? order.created_at.split('T')[0] : '—',
           name: product ? product.name : 'Café',
           image: product && product.image ? product.image.src : null
@@ -178,20 +141,20 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Error:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Erro ao carregar dados',
-      message: error.message 
+      message: error.message
     });
   }
 }
 
 function calculateNextOrderDate(lastOrder) {
   if (!lastOrder || !lastOrder.created_at) return '—';
-  
+
   const lastDate = new Date(lastOrder.created_at);
   const nextDate = new Date(lastDate);
   nextDate.setDate(nextDate.getDate() + 20);
-  
+
   return formatDate(nextDate.toISOString());
 }
 
