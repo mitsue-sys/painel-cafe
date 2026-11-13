@@ -19,8 +19,8 @@ export default async function handler(req, res) {
     const NUVEMSHOP_API = 'https://api.nuvemshop.com.br/v1/6800777';
     const TOKEN = '20176ee30509eb5bad4eed29e01ec96eb4dfa350';
 
-    // Buscar pedidos (aumentar per_page para 250 para trazer mais)
-    const url = `${NUVEMSHOP_API}/orders?customer_id=${customerId}&per_page=250`;
+    // Buscar TODOS os pedidos SEM NENHUM FILTRO na URL
+    const url = `${NUVEMSHOP_API}/orders`;
     console.log(`🌐 Chamando: ${url}`);
 
     const ordersResponse = await fetch(url, {
@@ -45,10 +45,18 @@ export default async function handler(req, res) {
     if (Array.isArray(allOrders)) {
       const beforeFilter = allOrders.length;
 
+        // DEBUG: Procurar pedido específico 2101426909
+      const specificOrder = allOrders.find(o => o.id === 2101426909);
+      if (specificOrder) {
+        console.log(`✅ ENCONTROU pedido 2101426909! customer.id=${specificOrder.customer?.id}, is_subscription=${specificOrder.is_subscription}`);
+      } else {
+        console.log(`❌ Pedido 2101426909 NÃO encontrado nos 100 primeiros`);
+      }
+
       // DEBUG: mostrar customer IDs únicos nos primeiros 10 pedidos
       console.log('🔍 Primeiros 10 customer.id dos pedidos:');
       for (let i = 0; i < Math.min(10, allOrders.length); i++) {
-        console.log(`  Pedido ${i}: customer.id=${allOrders[i].customer?.id}`);
+        console.log(`  Pedido ${i}: ID=${allOrders[i].id}, customer.id=${allOrders[i].customer?.id}`);
       }
 
       allOrders = allOrders.filter(order => String(order.customer?.id) === String(customerId));
