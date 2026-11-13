@@ -60,8 +60,15 @@ export default async function handler(req, res) {
     }
     console.log(`🔑 Campo identificado: ${customerField}`);
 
+    // Debug: mostrar o customer_id de vários pedidos
+    console.log('📋 customer_id dos primeiros 5 pedidos:');
+    for (let i = 0; i < Math.min(5, allOrders.length); i++) {
+      console.log(`  Pedido ${i}: customer_id=${allOrders[i].customer_id}, customer.id=${allOrders[i].customer?.id}`);
+    }
+
     allOrders = allOrders.filter(order => {
-      let orderId = order.customer?.id || order.customer_id || order.customerId || order.customer?.number;
+      // Tentar customer_id primeiro (sem ponto)
+      let orderId = order.customer_id || order.customer?.id || order.customerId || order.customer?.number;
       return String(orderId) === String(customerId);
     });
     console.log(`🎯 Pedidos do cliente ${customerId}: ${allOrders.length}`);
