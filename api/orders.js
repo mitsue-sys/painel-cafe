@@ -44,6 +44,13 @@ export default async function handler(req, res) {
     // Se retornou array, filtrar pelo cliente (em caso de parâmetro não funcionar)
     if (Array.isArray(allOrders)) {
       const beforeFilter = allOrders.length;
+
+      // DEBUG: mostrar customer IDs únicos nos primeiros 10 pedidos
+      console.log('🔍 Primeiros 10 customer.id dos pedidos:');
+      for (let i = 0; i < Math.min(10, allOrders.length); i++) {
+        console.log(`  Pedido ${i}: customer.id=${allOrders[i].customer?.id}`);
+      }
+
       allOrders = allOrders.filter(order => String(order.customer?.id) === String(customerId));
       console.log(`📊 Total bruto: ${beforeFilter}, após filtro: ${allOrders.length}`);
     } else {
