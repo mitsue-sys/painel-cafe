@@ -19,8 +19,8 @@ export default async function handler(req, res) {
     const NUVEMSHOP_API = 'https://api.nuvemshop.com.br/v1/6800777';
     const TOKEN = '20176ee30509eb5bad4eed29e01ec96eb4dfa350';
 
-    // Tentar buscar pedidos do cliente específico
-    const url = `${NUVEMSHOP_API}/customers/${customerId}/orders`;
+    // Buscar pedidos (tentar com customer_id)
+    const url = `${NUVEMSHOP_API}/orders?customer_id=${customerId}&per_page=100`;
     console.log(`🌐 Chamando: ${url}`);
 
     const ordersResponse = await fetch(url, {
@@ -40,7 +40,15 @@ export default async function handler(req, res) {
     }
 
     let allOrders = await ordersResponse.json();
-    console.log(`📊 Pedidos do cliente ${customerId}: ${allOrders.length}`);
+
+    // Se retornou array, filtrar pelo cliente (em caso de parâmetro não funcionar)
+    if (Array.isArray(allOrders)) {
+      const beforeFilter = allOrders.length;
+      allOrders = allOrders.filter(order => String(order.customer?.id) === String(customerId));
+      console.log(`📊 Total bruto: ${beforeFilter}, após filtro: ${allOrders.length}`);
+    } else {
+      console.log(`📊 Resposta não é array, tipo: ${typeof allOrders}`);
+    }
 
     if (!Array.isArray(allOrders) || allOrders.length === 0) {
       console.log(`⚠️ Cliente ${customerId} não tem pedidos`);
