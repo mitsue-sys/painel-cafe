@@ -19,8 +19,8 @@ export default async function handler(req, res) {
     const NUVEMSHOP_API = 'https://api.nuvemshop.com.br/v1/6800777';
     const TOKEN = '20176ee30509eb5bad4eed29e01ec96eb4dfa350';
 
-    // Buscar TODOS os pedidos (filtro ?customer= não funciona)
-    const url = `${NUVEMSHOP_API}/orders?per_page=100`;
+    // Tentar buscar pedidos do cliente específico
+    const url = `${NUVEMSHOP_API}/customers/${customerId}/orders`;
     console.log(`🌐 Chamando: ${url}`);
 
     const ordersResponse = await fetch(url, {
@@ -40,38 +40,7 @@ export default async function handler(req, res) {
     }
 
     let allOrders = await ordersResponse.json();
-    console.log(`📊 Total de pedidos brutos da loja: ${allOrders.length}`);
-
-    // DEBUG: Mostrar estrutura do primeiro pedido
-    if (allOrders.length > 0) {
-      console.log('🔍 Estrutura do primeiro pedido:', JSON.stringify(allOrders[0], null, 2));
-      console.log('🔍 Customer do primeiro pedido:', allOrders[0].customer);
-    }
-
-    // FILTRAR PELO CLIENTE CORRETO (no código, não na API)
-    // Tenta diferentes variáveis possíveis
-    let customerField = null;
-    if (allOrders.length > 0) {
-      const firstOrder = allOrders[0];
-      if (firstOrder.customer?.id) customerField = 'customer.id';
-      else if (firstOrder.customer_id) customerField = 'customer_id';
-      else if (firstOrder.customerId) customerField = 'customerId';
-      else if (firstOrder.customer?.number) customerField = 'customer.number';
-    }
-    console.log(`🔑 Campo identificado: ${customerField}`);
-
-    // Debug: mostrar o customer_id de vários pedidos
-    console.log('📋 customer_id dos primeiros 5 pedidos:');
-    for (let i = 0; i < Math.min(5, allOrders.length); i++) {
-      console.log(`  Pedido ${i}: customer_id=${allOrders[i].customer_id}, customer.id=${allOrders[i].customer?.id}`);
-    }
-
-    allOrders = allOrders.filter(order => {
-      // Tentar customer_id primeiro (sem ponto)
-      let orderId = order.customer_id || order.customer?.id || order.customerId || order.customer?.number;
-      return String(orderId) === String(customerId);
-    });
-    console.log(`🎯 Pedidos do cliente ${customerId}: ${allOrders.length}`);
+    console.log(`📊 Pedidos do cliente ${customerId}: ${allOrders.length}`);
 
     if (!Array.isArray(allOrders) || allOrders.length === 0) {
       console.log(`⚠️ Cliente ${customerId} não tem pedidos`);
