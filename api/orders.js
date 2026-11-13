@@ -42,8 +42,28 @@ export default async function handler(req, res) {
     let allOrders = await ordersResponse.json();
     console.log(`📊 Total de pedidos brutos da loja: ${allOrders.length}`);
 
+    // DEBUG: Mostrar estrutura do primeiro pedido
+    if (allOrders.length > 0) {
+      console.log('🔍 Estrutura do primeiro pedido:', JSON.stringify(allOrders[0], null, 2));
+      console.log('🔍 Customer do primeiro pedido:', allOrders[0].customer);
+    }
+
     // FILTRAR PELO CLIENTE CORRETO (no código, não na API)
-    allOrders = allOrders.filter(order => String(order.customer?.id) === String(customerId));
+    // Tenta diferentes variáveis possíveis
+    let customerField = null;
+    if (allOrders.length > 0) {
+      const firstOrder = allOrders[0];
+      if (firstOrder.customer?.id) customerField = 'customer.id';
+      else if (firstOrder.customer_id) customerField = 'customer_id';
+      else if (firstOrder.customerId) customerField = 'customerId';
+      else if (firstOrder.customer?.number) customerField = 'customer.number';
+    }
+    console.log(`🔑 Campo identificado: ${customerField}`);
+
+    allOrders = allOrders.filter(order => {
+      let orderId = order.customer?.id || order.customer_id || order.customerId || order.customer?.number;
+      return String(orderId) === String(customerId);
+    });
     console.log(`🎯 Pedidos do cliente ${customerId}: ${allOrders.length}`);
 
     if (!Array.isArray(allOrders) || allOrders.length === 0) {
