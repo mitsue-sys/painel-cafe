@@ -19,8 +19,8 @@ export default async function handler(req, res) {
     const NUVEMSHOP_API = 'https://api.nuvemshop.com.br/v1/6800777';
     const TOKEN = '20176ee30509eb5bad4eed29e01ec96eb4dfa350';
 
-    // Buscar pedidos (tentar com customer_id)
-    const url = `${NUVEMSHOP_API}/orders?customer_id=${customerId}&per_page=100`;
+    // Buscar pedidos (aumentar per_page para 250 para trazer mais)
+    const url = `${NUVEMSHOP_API}/orders?customer_id=${customerId}&per_page=250`;
     console.log(`🌐 Chamando: ${url}`);
 
     const ordersResponse = await fetch(url, {
