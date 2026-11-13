@@ -62,9 +62,15 @@ export default async function handler(req, res) {
       });
     }
 
+    // DEBUG: Mostrar status de assinatura dos primeiros 5 pedidos
+    console.log('📋 Primeiros 5 pedidos:');
+    for (let i = 0; i < Math.min(5, allOrders.length); i++) {
+      console.log(`  Pedido ${i}: ID=${allOrders[i].id}, is_subscription=${allOrders[i].is_subscription}, payment_status=${allOrders[i].payment_status}`);
+    }
+
     // FILTRAR apenas PEDIDOS DE ASSINATURA
     const subscriptionOrders = allOrders.filter(order => order.is_subscription === true);
-    console.log(`✅ Pedidos de assinatura do cliente: ${subscriptionOrders.length}`);
+    console.log(`✅ Pedidos de assinatura encontrados: ${subscriptionOrders.length}`);
 
     if (subscriptionOrders.length === 0) {
       console.log(`❌ Cliente ${customerId} não tem assinatura ativa`);
